@@ -1,0 +1,5 @@
+# CPU-only PyTorch build; without this, Linux pulls several GB of GPU libraries.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+numpy
+httpx
