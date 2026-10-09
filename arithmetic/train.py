@@ -55,7 +55,7 @@ def learning_rate(step: int, max_iters: int, peak: float, warmup: int) -> float:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--digits", type=int, default=3, help="largest size of number to add")
-    parser.add_argument("--out", type=Path, default=Path("out/gpt-0.5.pt"))
+    parser.add_argument("--out", type=Path, default=Path("out/gpt-0.5-math.pt"))
     parser.add_argument("--max-iters", type=int, default=3000)
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--lr", type=float, default=1e-3)

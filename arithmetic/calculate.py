@@ -3,7 +3,7 @@
 Without --prompt it opens an interactive loop. With --test it works through
 problems that were held out of training and reports how many it got right.
 
-    python calculate.py --model gpt-0.5 --prompt "347 + 589"
+    python calculate.py --model gpt-0.5-math --prompt "347 + 589"
     python calculate.py --test 10000
 """
 
@@ -55,7 +55,7 @@ def solve(model: GPT, a: torch.Tensor, b: torch.Tensor, digits: int) -> torch.Te
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--model", default="gpt-0.5", help="model name; loads out/<name>.pt")
+    parser.add_argument("--model", default="gpt-0.5-math", help="model name; loads out/<name>.pt")
     parser.add_argument("--prompt", default=None, help='one sum to work out, such as "347 + 589"')
     parser.add_argument("--test", type=int, default=None, metavar="N", help="check N held-out problems")
     # The model is too small for a GPU to pay off, so the CPU is the default.

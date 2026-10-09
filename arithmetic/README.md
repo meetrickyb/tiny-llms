@@ -2,7 +2,7 @@
 
 A GPT with 400,000 parameters that adds two numbers of up to three digits.
 
-The trained model is named `gpt-0.5`.
+The trained model is named `gpt-0.5-math`.
 
 ## Usage
 
@@ -12,14 +12,14 @@ from this folder:
 ```bash
 # Train (under three minutes on a laptop CPU), or download the trained model instead
 python train.py
-mkdir -p out && curl -L -o out/gpt-0.5.pt \
-  https://github.com/meetrickyb/tiny-llms/releases/download/arithmetic-v1/gpt-0.5.pt
+mkdir -p out && curl -L -o out/gpt-0.5-math.pt \
+  https://github.com/meetrickyb/tiny-llms/releases/download/arithmetic-v1/gpt-0.5-math.pt
 
 # Ask it interactively
-python calculate.py --model gpt-0.5
+python calculate.py --model gpt-0.5-math
 
 # One sum
-python calculate.py --model gpt-0.5 --prompt "347 + 589"
+python calculate.py --model gpt-0.5-math --prompt "347 + 589"
 
 # Score it on 10,000 problems held out of training
 python calculate.py --test 10000
@@ -33,7 +33,7 @@ python calculate.py --test 10000
 | `train.py --n-layer 1 --n-embd 32` | Train a smaller model |
 | `train.py --device mps` | Train on the Apple Silicon GPU instead of the CPU |
 | `train.py --out out/NAME.pt` | Save the model under another name |
-| `calculate.py --model NAME` | Use `out/NAME.pt`; the default is `gpt-0.5` |
+| `calculate.py --model NAME` | Use `out/NAME.pt`; the default is `gpt-0.5-math` |
 
 ## Files
 
