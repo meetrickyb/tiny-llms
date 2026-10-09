@@ -1,0 +1,4 @@
+# CPU-only PyTorch build; without this, Linux pulls several GB of GPU libraries.
+# On macOS the same wheel already includes MPS, the Apple Silicon GPU backend.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
