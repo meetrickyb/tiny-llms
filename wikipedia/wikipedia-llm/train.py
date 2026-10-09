@@ -7,7 +7,7 @@ Training is one loop repeated thousands of times:
   3. measure how wrong it was (the loss),
   4. nudge every parameter slightly in the direction that reduces the loss.
 
-    python stage1_from_scratch/train.py --max-iters 5000
+    python wikipedia-llm/train.py --max-iters 5000
 """
 
 from __future__ import annotations
@@ -20,25 +20,29 @@ from pathlib import Path
 
 import torch
 
-from generate import stream
+from generate import pick_device, stream
 from model import GPT, GPTConfig
 from tokenizer import Tokenizer
 
 
-def get_batch(data: torch.Tensor, batch_size: int, block_size: int) -> tuple[torch.Tensor, torch.Tensor]:
+def get_batch(
+    data: torch.Tensor, batch_size: int, block_size: int, device: torch.device
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Pick random snippets; the target is the same snippet shifted one token ahead."""
     starts = torch.randint(len(data) - block_size - 1, (batch_size,))
     x = torch.stack([data[i : i + block_size] for i in starts]).long()
     y = torch.stack([data[i + 1 : i + 1 + block_size] for i in starts]).long()
-    return x, y
+    return x.to(device), y.to(device)
 
 
 @torch.no_grad()
 def estimate_loss(model: GPT, data: torch.Tensor, batch_size: int, batches: int) -> float:
     """Average the loss over several batches for a steadier reading."""
     model.eval()
+    device = model.token_emb.weight.device
     losses = [
-        model(*get_batch(data, batch_size, model.config.block_size))[1].item() for _ in range(batches)
+        model(*get_batch(data, batch_size, model.config.block_size, device))[1].item()
+        for _ in range(batches)
     ]
     model.train()
     return sum(losses) / len(losses)
@@ -68,9 +72,11 @@ def main() -> None:
     parser.add_argument("--n-embd", type=int, default=GPTConfig.n_embd)
     parser.add_argument("--dropout", type=float, default=GPTConfig.dropout)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--device", default="auto", help="cpu, mps, cuda or auto")
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
+    device = pick_device(args.device)
     tokenizer = Tokenizer.load(args.data_dir / "tokenizer.json")
     train_data = torch.load(args.data_dir / "train.pt")
     val_data = torch.load(args.data_dir / "val.pt")
@@ -83,9 +89,10 @@ def main() -> None:
         n_embd=args.n_embd,
         dropout=args.dropout,
     )
-    model = GPT(config)
+    model = GPT(config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.1)
     print(f"Model: {model.num_parameters():,} parameters, {len(train_data):,} training tokens")
+    print(f"Training on: {device}")
     # Before any training the model guesses uniformly, so the loss starts near this.
     print(f"Loss of a random guess: {math.log(config.vocab_size):.2f}")
 
@@ -115,7 +122,7 @@ def main() -> None:
 
         for group in optimizer.param_groups:
             group["lr"] = learning_rate(step, args.max_iters, args.lr, args.warmup)
-        x, y = get_batch(train_data, args.batch_size, config.block_size)
+        x, y = get_batch(train_data, args.batch_size, config.block_size, device)
         _, loss = model(x, y)
         optimizer.zero_grad(set_to_none=True)
         loss.backward()  # work out how each parameter contributed to the error

@@ -3,7 +3,7 @@
 Give it the start of a sentence and it keeps writing, one token at a time.
 Without --prompt it opens an interactive loop.
 
-    python stage1_from_scratch/generate.py --prompt "The history of Canada"
+    python wikipedia-llm/generate.py --prompt "The history of Canada"
 """
 
 from __future__ import annotations
@@ -19,11 +19,24 @@ from model import GPT, GPTConfig
 from tokenizer import Tokenizer
 
 
-def load_model(checkpoint_path: Path) -> tuple[GPT, Tokenizer]:
+def pick_device(name: str = "auto") -> torch.device:
+    """Choose where the maths runs: "mps" is the GPU built into Apple Silicon Macs."""
+    if name == "auto":
+        if torch.backends.mps.is_available():
+            name = "mps"
+        elif torch.cuda.is_available():
+            name = "cuda"
+        else:
+            name = "cpu"
+    return torch.device(name)
+
+
+def load_model(checkpoint_path: Path, device: torch.device | str = "cpu") -> tuple[GPT, Tokenizer]:
     """Rebuild the model and tokenizer saved by train.py."""
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     model = GPT(GPTConfig(**checkpoint["config"]))
     model.load_state_dict(checkpoint["model"])
+    model.to(device)
     model.eval()
     tokenizer = Tokenizer([(a, b) for a, b in checkpoint["merges"]])
     return model, tokenizer
@@ -40,7 +53,7 @@ def stream(
     """Yield the continuation of `prompt` piece by piece as it is generated."""
     # An empty prompt starts from END_OF_TEXT, i.e. the beginning of a new article.
     ids = tokenizer.encode(prompt) or [tokenizer.eot_id]
-    idx = torch.tensor([ids], dtype=torch.long)
+    idx = torch.tensor([ids], dtype=torch.long, device=model.token_emb.weight.device)
     # A token can end in the middle of a multi-byte character, so bytes are
     # decoded incrementally rather than token by token.
     decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
@@ -59,9 +72,11 @@ def main() -> None:
     parser.add_argument("--max-new-tokens", type=int, default=200)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--top-k", type=int, default=50)
+    # One token at a time is too little work for a GPU to pay off, so the CPU is the default.
+    parser.add_argument("--device", default="cpu", help="cpu, mps, cuda or auto")
     args = parser.parse_args()
 
-    model, tokenizer = load_model(args.checkpoint)
+    model, tokenizer = load_model(args.checkpoint, pick_device(args.device))
 
     def run(prompt: str) -> None:
         print(prompt, end="", flush=True)

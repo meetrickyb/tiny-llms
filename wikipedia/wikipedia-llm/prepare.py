@@ -5,7 +5,7 @@ long sequence of token ids. A slice of whole articles is held out as a
 validation set, which the model never trains on, so we can tell learning
 apart from memorising.
 
-    python stage1_from_scratch/prepare.py --vocab-size 4096
+    python wikipedia-llm/prepare.py --vocab-size 4096
 """
 
 from __future__ import annotations

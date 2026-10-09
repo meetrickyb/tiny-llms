@@ -1,7 +1,7 @@
 # tiny-llms
 
-Small language models built in plain Python and trained on a laptop CPU, to
-show how LLMs are made. Each folder is a self-contained project.
+Small language models built in plain Python and trained on a laptop (CPU, or
+the GPU in an Apple Silicon Mac), to show how LLMs are made. Each folder is a self-contained project.
 
 | Folder | What it is |
 |---|---|

@@ -24,34 +24,58 @@ Run everything from this folder, with the virtual environment from the
 python download_wiki.py --category "History of Canada"
 
 # 2. Train the tokenizer and encode the text
-python stage1_from_scratch/prepare.py
+python wikipedia-llm/prepare.py
 
 # 3. Train the model
-python stage1_from_scratch/train.py
+python wikipedia-llm/train.py
 
 # 4. Talk to it
-python stage1_from_scratch/generate.py
+python wikipedia-llm/generate.py
 ```
 
 Any category works: pass a different `--category` to step 1.
 
-Training speed depends heavily on the CPU. For a quick first run on a slow
-machine, shrink the job:
+On an Apple Silicon Mac, `train.py` uses the built-in GPU (MPS) automatically,
+which is about twice as fast as the CPU for this model: roughly 0.1 s per step
+on an M1, so the default 5,000 steps take under ten minutes. Pass
+`--device cpu` to force the CPU.
+
+Elsewhere, training speed depends heavily on the CPU. For a quick first run on
+a slow machine, shrink the job:
 
 ```bash
-python stage1_from_scratch/train.py --max-iters 2000 --batch-size 16 --n-embd 128
+python wikipedia-llm/train.py --max-iters 2000 --batch-size 16 --n-embd 128
 ```
+
+## Skip the training
+
+Trained checkpoints are attached to the
+[releases](https://github.com/meetrickyb/tiny-llms/releases). A checkpoint is
+one file holding the weights, the model size and the tokenizer, so steps 1 to 3
+are not needed to use it:
+
+```bash
+mkdir -p out
+curl -L -o out/wikipedia-gpt-large.pt \
+  https://github.com/meetrickyb/tiny-llms/releases/download/wikipedia-v1/wikipedia-gpt-large.pt
+python wikipedia-llm/generate.py --checkpoint out/wikipedia-gpt-large.pt
+```
+
+| File | Model | Trained with |
+|---|---|---|
+| `wikipedia-gpt-small.pt` | 2.6M parameters | the default `train.py` settings |
+| `wikipedia-gpt-large.pt` | 6 layers, 256-wide, 256-token context | `train.py --n-layer 6 --n-embd 256 --block-size 256` |
 
 ## Reading order
 
 | File | What it shows |
 |---|---|
 | [download_wiki.py](download_wiki.py) | Where training data comes from |
-| [stage1_from_scratch/tokenizer.py](stage1_from_scratch/tokenizer.py) | How text becomes numbers (byte-pair encoding) |
-| [stage1_from_scratch/prepare.py](stage1_from_scratch/prepare.py) | Building the training and validation sets |
-| [stage1_from_scratch/model.py](stage1_from_scratch/model.py) | The transformer: embeddings, attention, feed-forward layers |
-| [stage1_from_scratch/train.py](stage1_from_scratch/train.py) | The training loop: predict, measure the error, adjust |
-| [stage1_from_scratch/generate.py](stage1_from_scratch/generate.py) | Sampling text one token at a time |
+| [wikipedia-llm/tokenizer.py](wikipedia-llm/tokenizer.py) | How text becomes numbers (byte-pair encoding) |
+| [wikipedia-llm/prepare.py](wikipedia-llm/prepare.py) | Building the training and validation sets |
+| [wikipedia-llm/model.py](wikipedia-llm/model.py) | The transformer: embeddings, attention, feed-forward layers |
+| [wikipedia-llm/train.py](wikipedia-llm/train.py) | The training loop: predict, measure the error, adjust |
+| [wikipedia-llm/generate.py](wikipedia-llm/generate.py) | Sampling text one token at a time |
 
 ## Things to try
 
