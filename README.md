@@ -6,6 +6,7 @@ the GPU in an Apple Silicon Mac), to show how LLMs are made. Each folder is a se
 | Folder | What it is |
 |---|---|
 | [wikipedia](wikipedia/) | A tiny GPT trained from scratch on Wikipedia's articles about the history of Canada |
+| [chat-app](chat-app/) | A chat app that uses that model as its LLM, through the same API as a hosted one |
 
 ## Setup
 

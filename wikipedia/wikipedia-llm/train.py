@@ -73,6 +73,10 @@ def main() -> None:
     parser.add_argument("--dropout", type=float, default=GPTConfig.dropout)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device", default="auto", help="cpu, mps, cuda or auto")
+    parser.add_argument(
+        "--init-from", type=Path, default=None, help="fine-tune this checkpoint instead of starting from random"
+    )
+    parser.add_argument("--sample-prompt", default="The history of Canada")
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -81,15 +85,24 @@ def main() -> None:
     train_data = torch.load(args.data_dir / "train.pt")
     val_data = torch.load(args.data_dir / "val.pt")
 
-    config = GPTConfig(
-        vocab_size=tokenizer.vocab_size,
-        block_size=args.block_size,
-        n_layer=args.n_layer,
-        n_head=args.n_head,
-        n_embd=args.n_embd,
-        dropout=args.dropout,
-    )
-    model = GPT(config).to(device)
+    if args.init_from:
+        # Fine-tuning: start from weights that already know the language, and
+        # keep the model the size it was trained at.
+        checkpoint = torch.load(args.init_from, map_location="cpu", weights_only=True)
+        config = GPTConfig(**checkpoint["config"])
+        model = GPT(config)
+        model.load_state_dict(checkpoint["model"])
+        model.to(device)
+    else:
+        config = GPTConfig(
+            vocab_size=tokenizer.vocab_size,
+            block_size=args.block_size,
+            n_layer=args.n_layer,
+            n_head=args.n_head,
+            n_embd=args.n_embd,
+            dropout=args.dropout,
+        )
+        model = GPT(config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.1)
     print(f"Model: {model.num_parameters():,} parameters, {len(train_data):,} training tokens")
     print(f"Training on: {device}")
@@ -108,9 +121,9 @@ def main() -> None:
                 f"{(time.time() - start) / 60:.1f} min elapsed"
             )
             model.eval()
-            sample = "".join(stream(model, tokenizer, "The history of Canada", max_new_tokens=60))
+            sample = "".join(stream(model, tokenizer, args.sample_prompt, max_new_tokens=60))
             model.train()
-            print(f"  sample: The history of Canada{sample}".replace("\n", " "))
+            print(f"  sample: {args.sample_prompt}{sample}".replace("\n", " "))
             if val_loss < best_val:
                 best_val = val_loss
                 torch.save(

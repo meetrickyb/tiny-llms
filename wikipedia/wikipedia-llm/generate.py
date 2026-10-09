@@ -49,10 +49,14 @@ def stream(
     max_new_tokens: int = 200,
     temperature: float = 0.8,
     top_k: int | None = 50,
+    new_article: bool = False,
 ) -> Iterator[str]:
     """Yield the continuation of `prompt` piece by piece as it is generated."""
     # An empty prompt starts from END_OF_TEXT, i.e. the beginning of a new article.
     ids = tokenizer.encode(prompt) or [tokenizer.eot_id]
+    if new_article and ids[0] != tokenizer.eot_id:
+        # Tells the model the prompt opens an article, so it reads as the title.
+        ids = [tokenizer.eot_id, *ids]
     idx = torch.tensor([ids], dtype=torch.long, device=model.token_emb.weight.device)
     # A token can end in the middle of a multi-byte character, so bytes are
     # decoded incrementally rather than token by token.

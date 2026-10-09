@@ -47,6 +47,36 @@ a slow machine, shrink the job:
 python wikipedia-llm/train.py --max-iters 2000 --batch-size 16 --n-embd 128
 ```
 
+## Teach it to answer questions
+
+The model from step 3 continues text. Asked "What is the Hudson's Bay
+Company?", it carries on as if that were the first line of an article,
+because it has never seen a question being answered. Fine-tuning changes
+that: a short second round of training, starting from the trained weights, on
+text shaped like the behaviour we want.
+
+Fine-tuning is where the validation loss earns its keep. It bottoms out
+within a few hundred steps and then climbs while the training loss keeps
+falling: the model has stopped learning how to answer and started reciting
+the answers it was shown. `train.py` saves the checkpoint from the lowest
+point, not the last step.
+
+```bash
+# 5. Build question-and-answer pairs from the articles
+python wikipedia-llm/prepare_qa.py
+
+# 6. Fine-tune the trained model on them
+python wikipedia-llm/train.py --init-from out/stage1.pt --data-dir data/qa \
+    --out out/gpt-0.5.pt --max-iters 3000 --lr 3e-4 \
+    --sample-prompt "Question: What is the Hudson's Bay Company? Answer:"
+
+# 7. Serve it over the same API that hosted LLMs use
+python wikipedia-llm/serve.py --checkpoint out/gpt-0.5.pt --qa
+```
+
+With the server running, the [chat app](../chat-app/) talks to it exactly as
+it would talk to a frontier model.
+
 ## Skip the training
 
 Trained checkpoints are attached to the
@@ -56,15 +86,18 @@ are not needed to use it:
 
 ```bash
 mkdir -p out
-curl -L -o out/wikipedia-gpt-large.pt \
-  https://github.com/meetrickyb/tiny-llms/releases/download/wikipedia-v1/wikipedia-gpt-large.pt
-python wikipedia-llm/generate.py --checkpoint out/wikipedia-gpt-large.pt
+curl -L -o out/gpt-0.5.pt \
+  https://github.com/meetrickyb/tiny-llms/releases/download/wikipedia-v1/gpt-0.5.pt
+python wikipedia-llm/serve.py --checkpoint out/gpt-0.5.pt --qa
 ```
 
 | File | Model | Trained with |
 |---|---|---|
-| `wikipedia-gpt-small.pt` | 2.6M parameters | the default `train.py` settings |
-| `wikipedia-gpt-large.pt` | 6 layers, 256-wide, 256-token context | `train.py --n-layer 6 --n-embd 256 --block-size 256` |
+| `gpt-0.5.pt` | 5.9M parameters, answers questions | `wikipedia-gpt-large.pt` fine-tuned as in step 6 |
+| `wikipedia-gpt-large.pt` | 5.9M parameters, continues text | `train.py --n-layer 6 --n-embd 256 --block-size 256` |
+| `wikipedia-gpt-small.pt` | 2.6M parameters, continues text | the default `train.py` settings |
+
+The two that continue text work with `generate.py --checkpoint`.
 
 ## Reading order
 
@@ -76,6 +109,8 @@ python wikipedia-llm/generate.py --checkpoint out/wikipedia-gpt-large.pt
 | [wikipedia-llm/model.py](wikipedia-llm/model.py) | The transformer: embeddings, attention, feed-forward layers |
 | [wikipedia-llm/train.py](wikipedia-llm/train.py) | The training loop: predict, measure the error, adjust |
 | [wikipedia-llm/generate.py](wikipedia-llm/generate.py) | Sampling text one token at a time |
+| [wikipedia-llm/prepare_qa.py](wikipedia-llm/prepare_qa.py) | Making fine-tuning data: question-and-answer pairs |
+| [wikipedia-llm/serve.py](wikipedia-llm/serve.py) | Putting the model behind the API that apps expect |
 
 ## Things to try
 
