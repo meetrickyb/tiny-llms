@@ -35,6 +35,12 @@ Chat with it from another, naming the model as you would with a hosted one:
 python chat-app/chat.py --model gpt-0.5
 ```
 
+Or ask one question and exit, which is handy in scripts:
+
+```bash
+python chat-app/chat.py --model gpt-0.5 --prompt "What is the Hudson's Bay Company?"
+```
+
 The server names each model after its checkpoint file, and can serve several
 at once (`--checkpoint out/gpt-0.5.pt out/stage1.pt --qa gpt-0.5`). Without
 `--model`, the app uses the first one the server lists.

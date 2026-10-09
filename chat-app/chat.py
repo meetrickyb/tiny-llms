@@ -6,7 +6,9 @@ and prints the reply as it streams back. Pointed at `wikipedia-llm/serve.py`
 it talks to the model trained in this repo; pointed at a hosted provider it
 talks to a frontier model. The code is the same either way.
 
-    python chat.py
+Without --prompt it opens an interactive loop.
+
+    python chat.py --model gpt-0.5 --prompt "What is the Hudson's Bay Company?"
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--base-url", default="http://127.0.0.1:8000/v1", help="where the LLM is served")
     parser.add_argument("--model", default=None, help="model name; defaults to the first one the server lists")
+    parser.add_argument("--prompt", default=None, help="ask this one question and exit, instead of chatting")
     parser.add_argument("--temperature", type=float, default=0.8)
     args = parser.parse_args()
 
@@ -34,18 +37,11 @@ def main() -> None:
     if model not in available:
         raise SystemExit(f"The server has no model named {model!r}. It serves: {', '.join(available)}")
 
-    print(f"Chatting with {model} at {args.base_url}. Empty line to quit.")
     messages: list[dict[str, str]] = []
-    while True:
-        try:
-            text = input("\nyou> ").strip()
-        except EOFError:
-            break
-        if not text:
-            break
-        messages.append({"role": "user", "content": text})
 
-        print(f"{model}> ", end="", flush=True)
+    def ask(text: str) -> None:
+        """Send the conversation so far plus `text`, and print the reply as it arrives."""
+        messages.append({"role": "user", "content": text})
         reply = ""
         chunks = client.chat.completions.create(
             model=model, messages=messages, temperature=args.temperature, stream=True
@@ -57,6 +53,21 @@ def main() -> None:
         print()
         # The whole conversation is sent back each turn; that is the only memory an LLM has.
         messages.append({"role": "assistant", "content": reply})
+
+    if args.prompt is not None:
+        ask(args.prompt)
+        return
+
+    print(f"Chatting with {model} at {args.base_url}. Empty line to quit.")
+    while True:
+        try:
+            text = input("\nyou> ").strip()
+        except EOFError:
+            break
+        if not text:
+            break
+        print(f"{model}> ", end="", flush=True)
+        ask(text)
 
 
 if __name__ == "__main__":
